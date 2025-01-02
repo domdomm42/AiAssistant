@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
-
+from service.TTS import generate_speech
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -50,8 +50,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
             response = ai_response.choices[0].message.content
             print("AI response:", response)
+
+            speech_base64 = generate_speech(response)
+
             await websocket.send_json({
                 "text": response,
+                "audio": speech_base64,
                 "type": "text",
                 "status": "success"
             })
