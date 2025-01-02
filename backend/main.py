@@ -1,5 +1,12 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+import requests
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+API_URL = os.getenv("API_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
 
 app = FastAPI()
 
@@ -15,7 +22,7 @@ app.add_middleware(
 # Test route
 @app.get("/")
 async def root():
-    return {"message": "Jarvis API is running"}
+    return {"message": "AI assistant is running"}
 
 # WebSocket endpoint
 @app.websocket("/ws")
@@ -23,13 +30,19 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-        
             message = await websocket.receive_text()
             print(f"Received message: {message}")
-      
-            response = f"You said: {message}"
-            await websocket.send_text(response)
+            response = requests.post(API_URL, json={
+                "model": MODEL_NAME,
+                "prompt": message,
+                "stream": False
+            })
+            response = response.json()
+            print("full response:", response)
+            print("short response:", response["response"])
+            await websocket.send_text(response["response"])
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
-        await websocket.close()
+        print("WebSocket closed")
+        
