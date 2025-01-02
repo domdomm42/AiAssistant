@@ -45,11 +45,29 @@ async def websocket_endpoint(websocket: WebSocket):
 
             ai_response = client.chat.completions.create(
                 model="gpt-4o-mini",
-                messages=question_and_context
+                messages=question_and_context,
+                stream=True
             )
+            # send stream a chunk at a time
+            res = ""
+            for chunk in ai_response:
+                if chunk.choices[0].delta.content:
+                    res = chunk.choices[0].delta.content
+                    # res += chunk.choices[0].delta.content
+                    # print("AI response:", res)
+                    await websocket.send_json({
+                        "text": res,
+                        "type": "chunk",
+                        "status": "success"
+                    })
+
+            await websocket.send_json({
+                "type": "complete",
+                "status": "success"
+            })
 
             response = ai_response.choices[0].message.content
-            print("AI response:", response)
+            # print("AI response:", response)
 
             speech_base64 = generate_speech(response)
 
@@ -61,6 +79,7 @@ async def websocket_endpoint(websocket: WebSocket):
             })
             
     except Exception as e:
+        print(f"Error: {str(e)}")
         await websocket.send_json({
             "type": "error",
             "text": str(e),
