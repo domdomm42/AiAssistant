@@ -3,7 +3,13 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 
-const ChatBox = () => {
+const ChatBox = ({
+  socket,
+  chatHistory,
+  currentResponse,
+  onAddHistory,
+  onReset,
+}) => {
   const {
     transcript,
     listening,
@@ -11,14 +17,7 @@ const ChatBox = () => {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
-  // Initialize chatHistory from sessionStorage
-  const [chatHistory, setChatHistory] = useState(() => {
-    const savedHistory = sessionStorage.getItem("chatHistory");
-    return savedHistory ? JSON.parse(savedHistory) : [];
-  });
-
   const [isListening, setIsListening] = useState(false);
-  const [socket, setSocket] = useState(null);
   const [silenceTimer, setSilenceTimer] = useState(null);
   const silenceThreshold = 1500;
 
@@ -34,52 +33,6 @@ const ChatBox = () => {
     setIsListening(false);
   };
 
-  const handleReset = () => {
-    resetTranscript();
-    setChatHistory([]);
-    sessionStorage.removeItem("chatHistory");
-  };
-
-  const addToHistory = (role, content) => {
-    const newMessage = { role, content };
-
-    return new Promise((resolve) => {
-      setChatHistory((prev) => {
-        const newHistory = [...prev, newMessage];
-        if (newHistory.length > 20) newHistory.shift();
-        sessionStorage.setItem("chatHistory", JSON.stringify(newHistory));
-        resolve();
-        return newHistory;
-      });
-    });
-  };
-
-  const playAudio = (base64Audio) => {
-    const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
-    audio.play();
-  };
-
-  // Socket handling
-  useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/ws");
-
-    socket.onmessage = (event) => {
-      const response = JSON.parse(event.data);
-      if (response.status === "success") {
-        addToHistory("assistant", response.text);
-        if (response.audio) {
-          playAudio(response.audio);
-        }
-      }
-    };
-
-    setSocket(socket);
-
-    return () => {
-      if (socket) socket.close();
-    };
-  }, []);
-
   // Handle new transcript text
   useEffect(() => {
     if (!isListening || !socket) return;
@@ -87,15 +40,13 @@ const ChatBox = () => {
 
     const timer = setTimeout(async () => {
       if (transcript) {
-        await addToHistory("user", transcript);
-
+        await onAddHistory("user", transcript);
         socket.send(
           JSON.stringify({
             message: transcript,
             context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
           })
         );
-
         resetTranscript();
       }
     }, silenceThreshold);
@@ -126,7 +77,7 @@ const ChatBox = () => {
           {isListening ? "Stop Listening" : "Start Listening"}
         </button>
         <button
-          onClick={handleReset}
+          onClick={onReset}
           className="ml-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-full"
         >
           Reset
@@ -156,6 +107,19 @@ const ChatBox = () => {
             </div>
           </div>
         ))}
+
+        {/* Streaming Response */}
+        {currentResponse && (
+          <div className="flex justify-start">
+            <div className="p-3 rounded-lg max-w-[80%] bg-gray-700">
+              <p className="text-sm text-gray-300 mb-1">AI</p>
+              <p className="text-white whitespace-pre-wrap">
+                {currentResponse}
+                <span className="animate-pulse">▊</span>
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Current Status */}
