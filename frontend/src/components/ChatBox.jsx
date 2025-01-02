@@ -54,6 +54,11 @@ const ChatBox = () => {
     });
   };
 
+  const playAudio = (base64Audio) => {
+    const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+    audio.play();
+  };
+
   // Socket handling
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8000/ws");
@@ -62,6 +67,9 @@ const ChatBox = () => {
       const response = JSON.parse(event.data);
       if (response.status === "success") {
         addToHistory("assistant", response.text);
+        if (response.audio) {
+          playAudio(response.audio);
+        }
       }
     };
 
