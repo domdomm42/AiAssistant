@@ -11,9 +11,14 @@ const ChatBox = () => {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
+  // Initialize chatHistory from sessionStorage
+  const [chatHistory, setChatHistory] = useState(() => {
+    const savedHistory = sessionStorage.getItem("chatHistory");
+    return savedHistory ? JSON.parse(savedHistory) : [];
+  });
+
   const [isListening, setIsListening] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [chatHistory, setChatHistory] = useState([]);
   const [silenceTimer, setSilenceTimer] = useState(null);
   const silenceThreshold = 1500;
 
@@ -32,36 +37,38 @@ const ChatBox = () => {
   const handleReset = () => {
     resetTranscript();
     setChatHistory([]);
+    sessionStorage.removeItem("chatHistory");
   };
 
-  // Initialize socket connection
+  const addToHistory = (role, content) => {
+    const newMessage = { role, content };
+
+    return new Promise((resolve) => {
+      setChatHistory((prev) => {
+        const newHistory = [...prev, newMessage];
+        if (newHistory.length > 20) newHistory.shift();
+        sessionStorage.setItem("chatHistory", JSON.stringify(newHistory));
+        resolve();
+        return newHistory;
+      });
+    });
+  };
+
+  // Socket handling
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8000/ws");
 
-    socket.onopen = () => {
-      console.log("Connected to backend websocket");
-    };
-
     socket.onmessage = (event) => {
-      const response = event.data;
-      console.log("response:", response);
-      if (response) {
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: response,
-          },
-        ]);
+      const response = JSON.parse(event.data);
+      if (response.status === "success") {
+        addToHistory("assistant", response.text);
       }
     };
 
     setSocket(socket);
 
     return () => {
-      if (socket) {
-        socket.close();
-      }
+      if (socket) socket.close();
     };
   }, []);
 
@@ -70,16 +77,17 @@ const ChatBox = () => {
     if (!isListening || !socket) return;
     if (silenceTimer) clearTimeout(silenceTimer);
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (transcript) {
-        setChatHistory((prev) => [
-          ...prev,
-          {
-            role: "user",
-            content: transcript,
-          },
-        ]);
-        socket.send(transcript);
+        await addToHistory("user", transcript);
+
+        socket.send(
+          JSON.stringify({
+            message: transcript,
+            context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+          })
+        );
+
         resetTranscript();
       }
     }, silenceThreshold);
