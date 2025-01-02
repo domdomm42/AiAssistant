@@ -18,7 +18,9 @@ const ChatBox = () => {
   }
 
   const startListening = () => {
-    SpeechRecognition.startListening({ continuous: true });
+    SpeechRecognition.startListening({
+      continuous: true,
+    });
     setIsListening(true);
   };
 
