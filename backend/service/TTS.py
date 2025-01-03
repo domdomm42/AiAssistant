@@ -15,7 +15,7 @@ speech_file_path = Path(__file__).parent / "speech.mp3"
 def generate_speech(text):
     response = client.audio.speech.create(
         model="tts-1",
-        voice="alloy",
+        voice="nova",
         input=text,
     )
     

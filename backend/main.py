@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from openai import OpenAI
 from service.TTS import generate_speech
+
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -30,6 +31,7 @@ app.add_middleware(
 async def root():
     return {"message": "AI assistant is running"}
 
+
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -50,33 +52,54 @@ async def websocket_endpoint(websocket: WebSocket):
             )
             # send stream a chunk at a time
             res = ""
+            current_sentence = ""
             for chunk in ai_response:
                 if chunk.choices[0].delta.content:
                     res = chunk.choices[0].delta.content
-                    # res += chunk.choices[0].delta.content
-                    # print("AI response:", res)
+                    current_sentence += res
+                
                     await websocket.send_json({
                         "text": res,
                         "type": "chunk",
                         "status": "success"
                     })
 
+                    # if any of the response contains a pause
+                    if any(punct in res for punct in ['.', '!', '?', '\n', ',']):
+                        if len(current_sentence.strip()) > 0:
+                            speech_base64 = generate_speech(current_sentence)
+                            await websocket.send_json({
+                                "audio": speech_base64,
+                                "type": "audio",
+                                "status": "success"
+                            })
+                            current_sentence = ""
+
+            if current_sentence.strip():
+                speech_base64 = generate_speech(current_sentence)
+                await websocket.send_json({
+                        "audio": speech_base64,
+                        "type": "audio",
+                        "status": "success"
+                })
+        
+
+
             await websocket.send_json({
                 "type": "complete",
                 "status": "success"
             })
 
-            response = ai_response.choices[0].message.content
-            # print("AI response:", response)
+        
 
-            speech_base64 = generate_speech(response)
+            # speech_base64 = generate_speech(total_response)
 
-            await websocket.send_json({
-                "text": response,
-                "audio": speech_base64,
-                "type": "text",
-                "status": "success"
-            })
+            # await websocket.send_json({
+            #     # "text": total_response,
+            #     "audio": speech_base64,
+            #     "type": "audio",
+            #     "status": "success"
+            # })
             
     except Exception as e:
         print(f"Error: {str(e)}")
