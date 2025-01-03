@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -19,7 +19,18 @@ const ChatBox = ({
 
   const [isListening, setIsListening] = useState(false);
   const [silenceTimer, setSilenceTimer] = useState(null);
-  const silenceThreshold = 1500;
+  const silenceThreshold = 1000;
+
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [currentResponse, chatHistory]);
 
   const startListening = () => {
     SpeechRecognition.startListening({
@@ -85,7 +96,10 @@ const ChatBox = ({
       </div>
 
       {/* Chat History */}
-      <div className="mt-4 space-y-4 max-h-96 overflow-y-auto bg-gray-900 p-4 rounded-lg">
+      <div
+        ref={chatContainerRef}
+        className="mt-4 space-y-4 max-h-96 overflow-y-auto bg-gray-900 p-4 rounded-lg"
+      >
         {chatHistory.map((message, index) => (
           <div
             key={index}
@@ -115,7 +129,7 @@ const ChatBox = ({
               <p className="text-sm text-gray-300 mb-1">AI</p>
               <p className="text-white whitespace-pre-wrap">
                 {currentResponse}
-                <span className="animate-pulse">▊</span>
+                {/* <span className="animate-pulse">▊</span> */}
               </p>
             </div>
           </div>
