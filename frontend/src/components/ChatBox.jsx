@@ -74,31 +74,11 @@ const ChatBox = ({
   }
 
   return (
-    <div className="p-4 bg-gray-800 rounded-lg">
-      {/* Controls */}
-      <div className="mb-4">
-        <button
-          onClick={isListening ? stopListening : startListening}
-          className={`px-4 py-2 rounded-full ${
-            isListening
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-blue-500 hover:bg-blue-600"
-          }`}
-        >
-          {isListening ? "Stop Listening" : "Start Listening"}
-        </button>
-        <button
-          onClick={onReset}
-          className="ml-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-full"
-        >
-          Reset
-        </button>
-      </div>
-
+    <div className="flex flex-col h-full bg-[#1C1C1C] rounded-lg overflow-hidden w-full">
       {/* Chat History */}
       <div
         ref={chatContainerRef}
-        className="mt-4 space-y-4 max-h-96 overflow-y-auto bg-gray-900 p-4 rounded-lg"
+        className="flex-1 p-4 space-y-3 overflow-y-auto"
       >
         {chatHistory.map((message, index) => (
           <div
@@ -108,14 +88,16 @@ const ChatBox = ({
             }`}
           >
             <div
-              className={`p-3 rounded-lg max-w-[80%] ${
-                message.role === "user" ? "bg-blue-600" : "bg-gray-700"
+              className={`px-4 py-2 rounded-2xl max-w-[85%] ${
+                message.role === "user"
+                  ? "bg-blue-600 text-white"
+                  : "bg-[#2D2D2D] text-gray-100"
               }`}
             >
-              <p className="text-sm text-gray-300 mb-1">
+              <p className="text-sm font-medium mb-1">
                 {message.role === "user" ? "You" : "AI"}
               </p>
-              <p className="text-white whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
                 {message.content}
               </p>
             </div>
@@ -125,21 +107,47 @@ const ChatBox = ({
         {/* Streaming Response */}
         {currentResponse && (
           <div className="flex justify-start">
-            <div className="p-3 rounded-lg max-w-[80%] bg-gray-700">
-              <p className="text-sm text-gray-300 mb-1">AI</p>
-              <p className="text-white whitespace-pre-wrap">
+            <div className="px-4 py-2 rounded-2xl max-w-[85%] bg-[#2D2D2D] text-gray-100">
+              <p className="text-sm font-medium mb-1">AI</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
                 {currentResponse}
-                {/* <span className="animate-pulse">▊</span> */}
+                <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Current Status */}
-      <div className="mt-4">
-        <p className="text-gray-400">Microphone: {listening ? "on" : "off"}</p>
-        <p className="text-white mt-2">Current: {transcript}</p>
+      {/* Controls Footer */}
+      <div className="p-4 border-t border-gray-800 bg-[#1C1C1C]">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={isListening ? stopListening : startListening}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              isListening
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+            }`}
+          >
+            {isListening ? "Stop Listening" : "Start Listening"}
+          </button>
+          <button
+            onClick={onReset}
+            className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] hover:bg-[#3D3D3D] text-gray-200 transition-colors"
+          >
+            Reset
+          </button>
+        </div>
+
+        {/* Status */}
+        <div className="mt-3 space-y-1">
+          <p className="text-sm text-gray-400">
+            Microphone: {listening ? "on" : "off"}
+          </p>
+          {transcript && (
+            <p className="text-sm text-gray-300">Current: {transcript}</p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import ChatBox from "./components/ChatBox";
-
+import AudioVisualizingSphere from "./components/AudioVisualizingSphere";
 function App() {
   const [chatHistory, setChatHistory] = useState(() => {
     const savedHistory = sessionStorage.getItem("chatHistory");
@@ -80,16 +80,21 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">AI Assistant</h1>
-        <ChatBox
-          socket={socket}
-          chatHistory={chatHistory}
-          currentResponse={currentResponse}
-          onAddHistory={addToHistory}
-          onReset={handleReset}
-        />
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="flex flex-row justify-center items-center h-screen">
+        <div className="flex w-3/4 justify-center items-center">
+          <AudioVisualizingSphere />
+        </div>
+
+        <div className="flex w-1/4 h-full p-4">
+          <ChatBox
+            socket={socket}
+            chatHistory={chatHistory}
+            currentResponse={currentResponse}
+            onAddHistory={addToHistory}
+            onReset={handleReset}
+          />
+        </div>
       </div>
     </div>
   );
