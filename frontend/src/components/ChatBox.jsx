@@ -1,7 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
+import { useRef, useEffect } from "react";
+import { AudioRecorder } from "./AudioRecorder";
 
 const ChatBox = ({
   socket,
@@ -10,19 +8,9 @@ const ChatBox = ({
   onAddHistory,
   onReset,
 }) => {
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
-
-  const [isListening, setIsListening] = useState(false);
-  const [silenceTimer, setSilenceTimer] = useState(null);
-  const silenceThreshold = 1000;
-
   const chatContainerRef = useRef(null);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTo({
@@ -32,53 +20,24 @@ const ChatBox = ({
     }
   }, [currentResponse, chatHistory]);
 
-  const startListening = () => {
-    SpeechRecognition.startListening({
-      continuous: true,
-    });
-    setIsListening(true);
+  const handleTranscription = (text) => {
+    onAddHistory("user", text);
+    if (socket) {
+      socket.send(
+        JSON.stringify({
+          message: text,
+          context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+        })
+      );
+    }
   };
-
-  const stopListening = () => {
-    SpeechRecognition.stopListening();
-    setIsListening(false);
-  };
-
-  // Handle new transcript text
-  useEffect(() => {
-    if (!isListening || !socket) return;
-    if (silenceTimer) clearTimeout(silenceTimer);
-
-    const timer = setTimeout(async () => {
-      if (transcript) {
-        await onAddHistory("user", transcript);
-        socket.send(
-          JSON.stringify({
-            message: transcript,
-            context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
-          })
-        );
-        resetTranscript();
-      }
-    }, silenceThreshold);
-
-    setSilenceTimer(timer);
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [transcript, isListening, socket]);
-
-  if (!browserSupportsSpeechRecognition) {
-    return <span>Browser doesn&apos;t support speech recognition.</span>;
-  }
 
   return (
     <div className="flex flex-col h-full bg-[#1C1C1C] rounded-lg overflow-hidden w-full">
       {/* Chat History */}
       <div
         ref={chatContainerRef}
-        className="flex-1 p-4 space-y-3 overflow-y-auto"
+        className="flex-1 p-4 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-[#1C1C1C]"
       >
         {chatHistory.map((message, index) => (
           <div
@@ -118,35 +77,16 @@ const ChatBox = ({
         )}
       </div>
 
-      {/* Controls Footer */}
-      <div className="p-4 border-t border-gray-800 bg-[#1C1C1C]">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={isListening ? stopListening : startListening}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              isListening
-                ? "bg-red-500 hover:bg-red-600 text-white"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-            }`}
-          >
-            {isListening ? "Stop Listening" : "Start Listening"}
-          </button>
+      {/* Input Area */}
+      <div className="p-4 border-t border-gray-700">
+        <div className="flex items-center space-x-2">
+          <AudioRecorder onTranscription={handleTranscription} />
           <button
             onClick={onReset}
             className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] hover:bg-[#3D3D3D] text-gray-200 transition-colors"
           >
             Reset
           </button>
-        </div>
-
-        {/* Status */}
-        <div className="mt-3 space-y-1">
-          <p className="text-sm text-gray-400">
-            Microphone: {listening ? "on" : "off"}
-          </p>
-          {transcript && (
-            <p className="text-sm text-gray-300">Current: {transcript}</p>
-          )}
         </div>
       </div>
     </div>

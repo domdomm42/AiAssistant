@@ -3,11 +3,10 @@ import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass";
 
-const AudioVisualizingSphere = ({ isPlaying }) => {
+const AudioVisualizingSphere = ({ volume = 0 }) => {
   const containerRef = useRef();
-  const sceneRef = useRef();
-  const sphereRef = useRef();
-  const composerRef = useRef();
+  const originalPositions = useRef();
+  const sphere = useRef();
 
   useEffect(() => {
     const scene = new THREE.Scene();
@@ -31,7 +30,7 @@ const AudioVisualizingSphere = ({ isPlaying }) => {
     composer.addPass(renderScene);
 
     // composer.addPass(new OutputPass());
-    composerRef.current = composer;
+    composer.current = composer;
 
     // make sphere
     const geometry = new THREE.SphereGeometry(1, 128, 128);
@@ -54,59 +53,67 @@ const AudioVisualizingSphere = ({ isPlaying }) => {
 
     const sphere = new THREE.Points(pointsGeometry, material);
     scene.add(sphere);
-    sphereRef.current = sphere;
+    sphere.current = sphere;
 
-    const originalPositions = positions.slice();
+    originalPositions.current = positions.slice();
 
     camera.position.z = 3;
-    sceneRef.current = scene;
 
     const animate = () => {
       requestAnimationFrame(animate);
 
-      if (sphere) {
-        sphere.rotation.y += 0.003;
+      if (sphere.current) {
+        sphere.current.rotation.y += 0.003;
 
-        const positions = pointsGeometry.attributes.position.array;
-        const time = Date.now() * 0.001;
+        // Only update positions if there's significant volume
 
-        for (let i = 0; i < positions.length; i += 3) {
-          const x = originalPositions[i];
-          const y = originalPositions[i + 1];
-          const z = originalPositions[i + 2];
+        if (volume > 0.01) {
+          const positions = pointsGeometry.current.attributes.position.array;
+          const time = Date.now() * 0.001;
 
-          const noise =
-            Math.sin(x * 2 + time) *
-            Math.cos(y * 2 + time) *
-            Math.sin(z * 2 + time);
+          for (let i = 0; i < positions.length; i += 3) {
+            const x = originalPositions.current[i];
+            const y = originalPositions.current[i + 1];
+            const z = originalPositions.current[i + 2];
 
-          const distortionAmount = isPlaying ? 0.2 : 0.1;
-          positions[i] = x + noise * distortionAmount;
-          positions[i + 1] = y + noise * distortionAmount;
-          positions[i + 2] = z + noise * distortionAmount;
+            const noise =
+              (Math.sin(x + time) + Math.cos(y + time) + Math.sin(z + time)) /
+              3;
+
+            const distortionAmount = volume * 0.3;
+            positions[i] = x + noise * distortionAmount;
+            positions[i + 1] = y + noise * distortionAmount;
+            positions[i + 2] = z + noise * distortionAmount;
+          }
+
+          pointsGeometry.current.attributes.position.needsUpdate = true;
         }
-
-        pointsGeometry.attributes.position.needsUpdate = true;
       }
 
-      composer.render();
+      composer.current.render();
     };
 
     animate();
 
+    // Cleanup
     return () => {
-      containerRef.current?.removeChild(renderer.domElement);
-      geometry.dispose();
-      material.dispose();
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
     };
-  }, [isPlaying]);
+  }, []);
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-full flex justify-center items-center"
-    />
-  );
+  useEffect(() => {
+    if (!sphere.current) return;
+
+    sphere.current.scale.set(
+      1 + volume * 0.1,
+      1 + volume * 0.1,
+      1 + volume * 0.1
+    );
+  }, [volume]);
+
+  return <div ref={containerRef} />;
 };
 
 export default AudioVisualizingSphere;
