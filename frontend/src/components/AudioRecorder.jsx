@@ -11,10 +11,17 @@ export function AudioRecorder({ onTranscription }) {
       // create WebSocket connection for streaming
       socket.current = new WebSocket("ws://localhost:8000/ws/stt");
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
       mediaRecorder.current = new MediaRecorder(stream, {
         mimeType: "audio/webm;codecs=opus",
-        audioBitsPerSecond: 48000,
+        audioBitsPerSecond: 16000,
       });
 
       mediaRecorder.current.ondataavailable = (event) => {

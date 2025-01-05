@@ -19,8 +19,8 @@ function App() {
     return new Promise((resolve) => {
       setChatHistory((prev) => {
         const newHistory = [...prev, newMessage];
-        if (newHistory.length > 20) newHistory.shift();
         sessionStorage.setItem("chatHistory", JSON.stringify(newHistory));
+        console.log("Updated chat history");
         resolve();
         return newHistory;
       });
