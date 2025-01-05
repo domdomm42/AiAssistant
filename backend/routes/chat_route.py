@@ -50,21 +50,12 @@ async def chat_websocket(websocket: WebSocket):
     except Exception as e:
         print(f"Chat error: {e}")
 
-# @router.post("/speech-to-text")
-# async def speech_to_text(audio: UploadFile = File(...)):
-#     audio_data = await audio.read()
-#     text = await transcribe_audio(audio_data)
-#     return {"text": text}
-
 @router.websocket("/ws/stt")
 async def stt_websocket(websocket: WebSocket):
     await websocket.accept()
     try:
-        while True:
-            data = await websocket.receive_text()
-            audio_bytes = base64.b64decode(data)
-            # Process audio_bytes for transcription
+        await transcribe_stream(websocket)
     except Exception as e:
         print(f"Error in STT websocket: {e}")
-    finally:
-        await websocket.close()
+    # finally:
+    #     await websocket.close()
