@@ -13,33 +13,7 @@ async def chat_websocket(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             chat_history = data['context']
-            ai_response = generate_response(chat_history)
-            res = ""
-            current_sentence = ""
-            for chunk in ai_response:
-                if data.get('type') == 'stop_response':
-                    continue
-                else:
-                    if chunk.choices[0].delta.content:
-                        res = chunk.choices[0].delta.content
-                        current_sentence += res
-                
-                        await websocket.send_json({
-                            "text": res,
-                            "type": "chunk",
-                            "status": "success"
-                        })
-
-                        # if any of the response contains a pause
-                        if any(punct in res for punct in ['.', '!', '?', '\n', ',']):
-                            if len(current_sentence.strip()) > 0:
-                                await send_speech_chunks(current_sentence, websocket)
-                                current_sentence = ""
-
-            # if there is any text left after the loop, send it
-            # if current_sentence.strip():
-            #     await send_speech_chunks(current_sentence, websocket)
-
+            await handle_chat_message(websocket, chat_history)
 
             # send complete status once all speech is sent
             await websocket.send_json({
@@ -59,3 +33,19 @@ async def stt_websocket(websocket: WebSocket):
         print(f"Error in STT websocket: {e}")
     # finally:
     #     await websocket.close()
+
+async def handle_chat_message(websocket, message):
+    current_sentence = ""
+    async for text_chunk in generate_response(message):
+        
+        await websocket.send_json({
+            "type": "chunk",
+            "text": text_chunk,
+            "status": "success"
+        })
+        current_sentence += text_chunk
+        if any(current_sentence.rstrip().endswith(punct) for punct in ".!?"):
+            await send_speech_chunks(current_sentence, websocket)
+            current_sentence = ""
+    if current_sentence.strip():
+        await send_speech_chunks(current_sentence, websocket)

@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import base64
 import asyncio
+import time
 
 load_dotenv()
 
@@ -25,17 +26,38 @@ async def connect_to_deepgram():
     dg_connection = dg_client.listen.asyncwebsocket.v("1")
     return dg_connection
 
+# keep alive message
 async def keep_alive(dg_connection):
     keep_alive_msg = json.dumps({"type": "KeepAlive"})
     await dg_connection.send(keep_alive_msg)
 
+# send transcript to frontend
 async def send_transcript_to_frontend(websocket, transcript):
-    print("Transcript received:", transcript)
     await websocket.send_json({
         "type": "transcription",
         "text": transcript.channel.alternatives[0].transcript,
         "is_final": transcript.speech_final
     })
+
+# send keepalive message to deepgram every 3 seconds
+async def send_keepalive(dg_connection):
+    while True:
+        try:
+            print("Sending keepalive message" + time.strftime("%Y-%m-%d %H:%M:%S"))
+            await keep_alive(dg_connection)
+            await asyncio.sleep(3)
+        except Exception as e:
+            print(f"Error in send_keepalive: {e}")
+            break
+
+def create_transcript_handler(websocket):
+    async def on_transcript(*args, result):
+        sentence = result.channel.alternatives[0].transcript
+        if len(sentence) == 0:
+            return
+        print(f"speaker: {sentence}")
+        await send_transcript_to_frontend(websocket, result)
+    return on_transcript
 
 # transcribe the audio stream from the websocket
 async def transcribe_stream(websocket):
@@ -43,37 +65,29 @@ async def transcribe_stream(websocket):
         dg_connection = await connect_to_deepgram()
         print("Deepgram connection established")
 
-        # send keepalive messages to deepgram every 3 seconds
-        async def send_keepalive():
-            while True:
-                try:
-                    print("Sending keepalive message")
-                    await dg_connection.send(json.dumps({"type": "KeepAlive"}))
-                    await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"Error in send_keepalive: {e}")
-                    break
-
-        async def on_transcript(*args, result):
-            sentence = result.channel.alternatives[0].transcript
-            if len(sentence) == 0:
-                return
-            print(f"speaker: {sentence}")
-            await send_transcript_to_frontend(websocket, result)
-
+        # start the deepgram connection
         await dg_connection.start(options)
-        dg_connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
-        keep_alive_task = asyncio.create_task(send_keepalive())
+
+        # Create the transcript handler with websocket access
+        transcript_handler = create_transcript_handler(websocket)
+        
+        # When there is transcript event, send the transcript to the frontend
+        dg_connection.on(LiveTranscriptionEvents.Transcript, transcript_handler)
+
+        # send keepalive message every 3 seconds
+        asyncio.create_task(send_keepalive(dg_connection))
 
         try:
             while True:
+                # receive audio data from the websocket
                 base_64_audio = await websocket.receive_text()
                 audio_data = base64.b64decode(base_64_audio)
+
+                # send the audio data to deepgram
                 await dg_connection.send(audio_data)
         except Exception as e:
             print(f"Error in websocket communication: {e}")
-        finally:
-            keep_alive_task.cancel()
+
     except Exception as e:
         print(f"Error in transcribe_stream: {e}")
         if dg_connection:
