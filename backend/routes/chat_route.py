@@ -31,13 +31,12 @@ async def stt_websocket(websocket: WebSocket):
         await transcribe_stream(websocket)
     except Exception as e:
         print(f"Error in STT websocket: {e}")
-    # finally:
-    #     await websocket.close()
+    finally:
+        await websocket.close()
 
 async def handle_chat_message(websocket, message):
     current_sentence = ""
     async for text_chunk in generate_response(message):
-        
         await websocket.send_json({
             "type": "chunk",
             "text": text_chunk,

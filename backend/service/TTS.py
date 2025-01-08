@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 import base64
 
 from dotenv import load_dotenv
@@ -7,11 +7,11 @@ import os
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # generate speech and return encoded audio
-def generate_speech(text):
-    response = client.audio.speech.create(
+async def generate_speech(text):
+    response = await client.audio.speech.create(
         model="tts-1",
         voice="nova",
         input=text,
@@ -21,7 +21,7 @@ def generate_speech(text):
     return audio_base64
 
 async def send_speech_chunks(current_sentence, websocket):
-    speech_base64 = generate_speech(current_sentence)
+    speech_base64 = await generate_speech(current_sentence)
     await websocket.send_json({
         "audio": speech_base64,
         "type": "audio",

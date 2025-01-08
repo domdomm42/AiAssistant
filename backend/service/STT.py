@@ -16,6 +16,9 @@ config = DeepgramClientOptions(
 options = LiveOptions(
   punctuate=True,
   interim_results=True,
+  model="nova-2",
+  filler_words=False,
+
 )
 
 # setup deepgram client
@@ -43,7 +46,6 @@ async def send_transcript_to_frontend(websocket, transcript):
 async def send_keepalive(dg_connection):
     while True:
         try:
-            print("Sending keepalive message" + time.strftime("%Y-%m-%d %H:%M:%S"))
             await keep_alive(dg_connection)
             await asyncio.sleep(3)
         except Exception as e:
