@@ -73,10 +73,10 @@ export function AudioRecorder({ onTranscription }) {
     <div className="flex flex-col">
       <button
         onClick={isListening ? stopRecording : startRecording}
-        className={`px-4 py-2 rounded ${
+        className={`px-3 py-1.5 rounded-lg text-md font-medium transition-all duration-200 ${
           isListening
-            ? "bg-red-500 hover:bg-red-600"
-            : "bg-blue-500 hover:bg-blue-600"
+            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+            : "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
         }`}
       >
         {isListening ? "Stop Listening" : "Start Listening"}

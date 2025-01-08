@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { AudioRecorder } from "./AudioRecorder";
+import ReactMarkdown from "react-markdown";
 
 const ChatBox = ({
   socket,
@@ -33,11 +34,22 @@ const ChatBox = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1C1C1C] rounded-lg overflow-hidden w-full">
-      {/* Chat History */}
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-4 border-b border-gray-800 bg-black/30">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-medium text-gray-200">Chat Session</h2>
+          <button
+            onClick={onReset}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+          >
+            Clear Chat
+          </button>
+        </div>
+      </div>
+
       <div
         ref={chatContainerRef}
-        className="flex-1 p-4 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-[#1C1C1C]"
+        className="flex-1 p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
       >
         {chatHistory.map((message, index) => (
           <div
@@ -56,9 +68,9 @@ const ChatBox = ({
               <p className="text-sm font-medium mb-1">
                 {message.role === "user" ? "You" : "AI"}
               </p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              <ReactMarkdown className="text-sm leading-relaxed text-gray-100">
                 {message.content}
-              </p>
+              </ReactMarkdown>
             </div>
           </div>
         ))}
@@ -66,28 +78,21 @@ const ChatBox = ({
         {/* Streaming Response */}
         {currentResponse && (
           <div className="flex justify-start">
-            <div className="px-4 py-2 rounded-2xl max-w-[85%] bg-[#2D2D2D] text-gray-100">
-              <p className="text-sm font-medium mb-1">AI</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                {currentResponse}
+            <div className="px-4 py-2 rounded-2xl max-w-[85%] bg-[#2D2D2D]">
+              <p className="text-sm font-medium mb-1 text-gray-100">AI</p>
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown className="text-sm leading-relaxed text-gray-100">
+                  {currentResponse}
+                </ReactMarkdown>
                 <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
-              </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center space-x-2">
-          <AudioRecorder onTranscription={handleTranscription} />
-          <button
-            onClick={onReset}
-            className="px-4 py-2 rounded-full text-sm font-medium bg-[#2D2D2D] hover:bg-[#3D3D3D] text-gray-200 transition-colors"
-          >
-            Reset
-          </button>
-        </div>
+      <div className="p-6 border-t border-gray-800 bg-black/30">
+        <AudioRecorder onTranscription={handleTranscription} />
       </div>
     </div>
   );
