@@ -1,18 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import ChatBox from "./components/ChatBox";
-import AudioVisualizingSphere from "./components/AudioVisualizingSphere";
+import { SocketProvider } from "./context/SocketContext";
+
 function App() {
   const [chatHistory, setChatHistory] = useState(() => {
     const savedHistory = sessionStorage.getItem("chatHistory");
     return savedHistory ? JSON.parse(savedHistory) : [];
   });
-  const [socket, setSocket] = useState(null);
+
   const [currentResponse, setCurrentResponse] = useState("");
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
+
+  const [chatSocket, setChatSocket] = useState(null);
+  const [sttSocket, setSTTSocket] = useState(null);
 
   const addToHistory = useCallback((role, content) => {
     const newMessage = { role, content };
@@ -33,6 +37,75 @@ function App() {
     sessionStorage.removeItem("chatHistory");
   }, []);
 
+  // Socket handling
+  useEffect(() => {
+    let wsChat = null;
+    let wsSTT = null;
+
+    const connectWebSockets = () => {
+      try {
+        wsChat = new WebSocket("ws://localhost:8000/ws/chat");
+        wsSTT = new WebSocket("ws://localhost:8000/ws/stt");
+
+        wsChat.onopen = () => {
+          console.log(
+            "Chat WebSocket Connected, readyState:",
+            wsChat.readyState
+          );
+          setChatSocket(wsChat);
+        };
+
+        wsSTT.onopen = () => {
+          console.log("STT WebSocket Connected, readyState:", wsSTT.readyState);
+          setSTTSocket(wsSTT);
+        };
+
+        wsSTT.onerror = (error) => {
+          console.error("STT WebSocket Error:", error);
+        };
+
+        wsSTT.onclose = (event) => {
+          console.log("STT WebSocket Closed", event.code, event.reason);
+          setSTTSocket(null);
+        };
+
+        // Add message handlers
+        wsChat.onmessage = async (event) => {
+          const response = JSON.parse(event.data);
+          if (response.status === "success") {
+            if (response.type === "chunk") {
+              setCurrentResponse((prev) => {
+                const newResponse = prev + response.text;
+                return newResponse;
+              });
+            } else if (response.type === "audio") {
+              setAudioQueue((prev) => [...prev, response.audio]);
+            } else if (response.type === "complete") {
+              setCurrentResponse((prev) => {
+                addToHistory("assistant", prev);
+                return "";
+              });
+            }
+          }
+        };
+      } catch (error) {
+        console.error("WebSocket connection error:", error);
+      }
+    };
+
+    connectWebSockets();
+
+    return () => {
+      if (wsChat && wsChat.readyState === WebSocket.OPEN) {
+        wsChat.close();
+      }
+      if (wsSTT && wsSTT.readyState === WebSocket.OPEN) {
+        wsSTT.close();
+      }
+    };
+  }, []);
+
+  // audio playing
   useEffect(() => {
     const playNextAudio = async () => {
       if (audioQueue.length > 0 && !isPlaying) {
@@ -99,33 +172,6 @@ function App() {
 
     playNextAudio();
   }, [audioQueue, isPlaying]);
-
-  // Socket handling
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/chat");
-
-    // Listens for messages from the server
-    ws.onmessage = async (event) => {
-      const response = JSON.parse(event.data);
-      if (response.status === "success") {
-        if (response.type === "chunk") {
-          setCurrentResponse((prev) => {
-            const newResponse = prev + response.text;
-            return newResponse;
-          });
-        } else if (response.type === "audio") {
-          setAudioQueue((prev) => [...prev, response.audio]);
-        } else if (response.type === "complete") {
-          setCurrentResponse((prev) => {
-            addToHistory("assistant", prev);
-            return "";
-          });
-        }
-      }
-    };
-
-    setSocket(ws);
-  }, []);
 
   return (
     <div className="h-screen bg-[#0A0A0A]">
@@ -205,15 +251,16 @@ function App() {
         </div>
 
         {/* Right Side - Chat */}
-        <div className="w-2/3 h-full bg-black/40 backdrop-blur-sm rounded-2xl border border-white/5">
-          <ChatBox
-            socket={socket}
-            chatHistory={chatHistory}
-            currentResponse={currentResponse}
-            onAddHistory={addToHistory}
-            onReset={handleReset}
-          />
-        </div>
+        <SocketProvider value={{ sttSocket, chatSocket }}>
+          <div className="w-2/3 h-full bg-black/40 backdrop-blur-sm rounded-2xl border border-white/5">
+            <ChatBox
+              chatHistory={chatHistory}
+              currentResponse={currentResponse}
+              onAddHistory={addToHistory}
+              onReset={handleReset}
+            />
+          </div>
+        </SocketProvider>
       </main>
     </div>
   );

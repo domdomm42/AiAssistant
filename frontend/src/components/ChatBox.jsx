@@ -1,15 +1,11 @@
 import { useRef, useEffect } from "react";
 import { AudioRecorder } from "./AudioRecorder";
 import ReactMarkdown from "react-markdown";
+import { useSocket } from "../context/SocketContext";
 
-const ChatBox = ({
-  socket,
-  chatHistory,
-  currentResponse,
-  onAddHistory,
-  onReset,
-}) => {
+const ChatBox = ({ chatHistory, currentResponse, onAddHistory, onReset }) => {
   const chatContainerRef = useRef(null);
+  const { chatSocket } = useSocket();
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -21,15 +17,22 @@ const ChatBox = ({
     }
   }, [currentResponse, chatHistory]);
 
+  // add user
   const handleTranscription = (text) => {
-    onAddHistory("user", text);
-    if (socket) {
-      socket.send(
-        JSON.stringify({
-          message: text,
-          context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
-        })
-      );
+    if (chatSocket?.readyState === WebSocket.OPEN) {
+      try {
+        chatSocket.send(
+          JSON.stringify({
+            message: text,
+            context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+          })
+        );
+        onAddHistory("user", text);
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      }
+    } else {
+      console.error("Socket is not connected");
     }
   };
 
