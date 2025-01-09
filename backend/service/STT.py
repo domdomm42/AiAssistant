@@ -14,11 +14,14 @@ config = DeepgramClientOptions(
 )
 
 options = LiveOptions(
-  punctuate=True,
-  interim_results=True,
-  model="nova-2",
-  filler_words=False,
-
+    model="nova-2",
+    smart_format=True,
+    sample_rate=16000,
+    channels=1,
+    language="en",
+    interim_results=True,
+    utterance_end_ms="1000",     # Longer pause threshold
+    vad_events=True,
 )
 
 # setup deepgram client
@@ -35,12 +38,12 @@ async def keep_alive(dg_connection):
     await dg_connection.send(keep_alive_msg)
 
 # send transcript to frontend
-async def send_transcript_to_frontend(websocket, transcript):
-    await websocket.send_json({
-        "type": "transcription",
-        "text": transcript.channel.alternatives[0].transcript,
-        "is_final": transcript.speech_final
-    })
+# async def send_transcript_to_frontend(websocket, transcript):
+#     await websocket.send_json({
+#         "type": "transcription",
+#         "text": transcript.channel.alternatives[0].transcript,
+#         "is_final": transcript.speech_final
+#     })
 
 # send keepalive message to deepgram every 3 seconds
 async def send_keepalive(dg_connection):
@@ -55,10 +58,17 @@ async def send_keepalive(dg_connection):
 def create_transcript_handler(websocket):
     async def on_transcript(*args, result):
         sentence = result.channel.alternatives[0].transcript
+
         if len(sentence) == 0:
-            return
-        print(f"speaker: {sentence}")
-        await send_transcript_to_frontend(websocket, result)
+            return 
+        
+        if result.speech_final:
+            await websocket.send_json({
+                "type": "transcription",
+                "text": sentence,
+                "is_final": True
+            })
+
     return on_transcript
 
 # transcribe the audio stream from the websocket

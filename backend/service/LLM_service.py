@@ -13,8 +13,8 @@ SYSTEM_PROMPT = {
     "content": "You are a helpful assistant, you will answer the users question as best as you can and as short as possible unless the user asks for more information. Answer in a conversational manner. Do not use markdown."
 }
 
-async def generate_response(chat_history):
-    question_and_context = [SYSTEM_PROMPT] + chat_history
+async def generate_LLM_response(message_and_context):
+    question_and_context = [SYSTEM_PROMPT] + message_and_context
     stream = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=question_and_context,
