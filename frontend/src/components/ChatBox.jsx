@@ -34,14 +34,12 @@ const ChatBox = ({
         setCurrentResponse(""); // Clear current response
       }
 
-      // Send cancel signal and clear audio
-      chatSocket.send(
-        JSON.stringify({
-          type: "cancel",
-          context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
-        })
-      );
-      setAudioQueue([]);
+      // chatSocket.send(
+      //   JSON.stringify({
+      //     context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+      //   })
+      // );
+      // setAudioQueue([]);
 
       // Add user's new message and send it
       await onAddHistory("user", text);
@@ -50,6 +48,8 @@ const ChatBox = ({
           context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
         })
       );
+
+      setAudioQueue([]);
     } else {
       console.error("Socket is not connected");
     }
@@ -106,7 +106,6 @@ const ChatBox = ({
                 <ReactMarkdown className="text-sm leading-relaxed text-gray-100">
                   {currentResponse}
                 </ReactMarkdown>
-                <span className="inline-block w-2 h-4 ml-1 bg-blue-500 animate-pulse" />
               </div>
             </div>
           </div>

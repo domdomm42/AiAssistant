@@ -78,15 +78,9 @@ function App() {
             } else if (response.type === "audio") {
               setAudioQueue((prev) => [...prev, response.audio]);
             } else if (response.type === "complete") {
-              setCurrentResponse((prev) => {
-                addToHistory("assistant", prev);
-                return "";
-              });
-            }
-          } else if (response.type === "cancelled") {
-            setCurrentResponse("");
-            if (audioQueue.length > 0) {
-              setAudioQueue([]);
+              const finalResponse = currentResponse;
+              setCurrentResponse("");
+              await addToHistory("assistant", finalResponse);
             }
           }
         };
