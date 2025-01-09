@@ -1,7 +1,7 @@
 import { useSpeechToText } from "../hooks/useSpeechToText";
 
 export function AudioRecorder({ onTranscription }) {
-  const { isRecording, pendingText, startRecording, stopRecording } =
+  const { isRecording, startRecording, stopRecording } =
     useSpeechToText(onTranscription);
 
   return (
@@ -16,10 +16,6 @@ export function AudioRecorder({ onTranscription }) {
       >
         {isRecording ? "Stop Listening" : "Start Listening"}
       </button>
-
-      {pendingText && (
-        <div className="text-sm text-gray-400 mt-2">{pendingText}</div>
-      )}
     </div>
   );
 }

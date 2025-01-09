@@ -4,22 +4,18 @@ import { useSocket } from "../context/SocketContext";
 // the chatSocket gets sent to /ws/chat
 export function useSpeechToText(onTranscription) {
   const [isRecording, setIsRecording] = useState(false);
-  const [pendingText, setPendingText] = useState(null);
   const { sttSocket } = useSocket();
 
   const voiceRecorder = useRef(null);
 
+  // Setup Speech to Text websocket handler, for final STT transcription, send it to the onTranscription callback
   useEffect(() => {
     if (sttSocket?.readyState === WebSocket.OPEN) {
       // Set up message handler for transcriptions
       sttSocket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        if (message.type === "transcription") {
-          setPendingText(message.text);
-          if (message.is_final) {
-            onTranscription(message.text);
-            setPendingText(null);
-          }
+        if (message.type === "transcription" && message.is_final) {
+          onTranscription(message.text);
         }
       };
 

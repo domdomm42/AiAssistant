@@ -3,7 +3,15 @@ import { AudioRecorder } from "./AudioRecorder";
 import ReactMarkdown from "react-markdown";
 import { useSocket } from "../context/SocketContext";
 
-const ChatBox = ({ chatHistory, currentResponse, onAddHistory, onReset }) => {
+const ChatBox = ({
+  chatHistory,
+  currentResponse,
+  setCurrentResponse,
+  audioQueue,
+  setAudioQueue,
+  onAddHistory,
+  onReset,
+}) => {
   const chatContainerRef = useRef(null);
   const { chatSocket } = useSocket();
 
@@ -17,20 +25,31 @@ const ChatBox = ({ chatHistory, currentResponse, onAddHistory, onReset }) => {
     }
   }, [currentResponse, chatHistory]);
 
-  // add user
-  const handleTranscription = (text) => {
+  // Add user text transcription to the chat history and send to backend LLM socket
+  const handleTranscription = async (text) => {
     if (chatSocket?.readyState === WebSocket.OPEN) {
-      try {
-        chatSocket.send(
-          JSON.stringify({
-            message: text,
-            context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
-          })
-        );
-        onAddHistory("user", text);
-      } catch (error) {
-        console.error("Failed to send message:", error);
+      // If there's a current response, save it first
+      if (currentResponse) {
+        await onAddHistory("assistant", currentResponse);
+        setCurrentResponse(""); // Clear current response
       }
+
+      // Send cancel signal and clear audio
+      chatSocket.send(
+        JSON.stringify({
+          type: "cancel",
+          context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+        })
+      );
+      setAudioQueue([]);
+
+      // Add user's new message and send it
+      await onAddHistory("user", text);
+      chatSocket.send(
+        JSON.stringify({
+          context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
+        })
+      );
     } else {
       console.error("Socket is not connected");
     }
@@ -71,7 +90,7 @@ const ChatBox = ({ chatHistory, currentResponse, onAddHistory, onReset }) => {
               <p className="text-sm font-medium mb-1">
                 {message.role === "user" ? "You" : "AI"}
               </p>
-              <ReactMarkdown className="text-sm leading-relaxed text-gray-100">
+              <ReactMarkdown className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed text-gray-100">
                 {message.content}
               </ReactMarkdown>
             </div>

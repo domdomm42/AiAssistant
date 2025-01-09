@@ -37,7 +37,7 @@ function App() {
     sessionStorage.removeItem("chatHistory");
   }, []);
 
-  // Socket handling
+  // Setup sockets and add text + audio message handlers
   useEffect(() => {
     let wsChat = null;
     let wsSTT = null;
@@ -74,10 +74,7 @@ function App() {
           const response = JSON.parse(event.data);
           if (response.status === "success") {
             if (response.type === "chunk") {
-              setCurrentResponse((prev) => {
-                const newResponse = prev + response.text;
-                return newResponse;
-              });
+              setCurrentResponse((prev) => prev + response.text);
             } else if (response.type === "audio") {
               setAudioQueue((prev) => [...prev, response.audio]);
             } else if (response.type === "complete") {
@@ -85,6 +82,11 @@ function App() {
                 addToHistory("assistant", prev);
                 return "";
               });
+            }
+          } else if (response.type === "cancelled") {
+            setCurrentResponse("");
+            if (audioQueue.length > 0) {
+              setAudioQueue([]);
             }
           }
         };
@@ -256,6 +258,9 @@ function App() {
             <ChatBox
               chatHistory={chatHistory}
               currentResponse={currentResponse}
+              setCurrentResponse={setCurrentResponse}
+              audioQueue={audioQueue}
+              setAudioQueue={setAudioQueue}
               onAddHistory={addToHistory}
               onReset={handleReset}
             />
