@@ -45,8 +45,12 @@ function App() {
 
     const connectWebSockets = () => {
       try {
-        wsChat = new WebSocket("ws://localhost:8000/ws/chat");
-        wsSTT = new WebSocket("ws://localhost:8000/ws/stt");
+        const backendUrl =
+          import.meta.env.BACKEND_URL || "http://localhost:8000";
+        const wsUrl = backendUrl.replace(/^http/, "ws");
+
+        wsChat = new WebSocket(`${wsUrl}/ws/chat`);
+        wsSTT = new WebSocket(`${wsUrl}/ws/stt`);
 
         wsChat.onopen = () => {
           console.log(
