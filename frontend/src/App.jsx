@@ -9,6 +9,7 @@ function App() {
   });
 
   const [currentResponse, setCurrentResponse] = useState("");
+  const currentResponseRef = useRef("");
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0);
@@ -74,13 +75,14 @@ function App() {
           const response = JSON.parse(event.data);
           if (response.status === "success") {
             if (response.type === "chunk") {
-              setCurrentResponse((prev) => prev + response.text);
+              currentResponseRef.current += response.text;
+              setCurrentResponse(currentResponseRef.current);
             } else if (response.type === "audio") {
               setAudioQueue((prev) => [...prev, response.audio]);
             } else if (response.type === "complete") {
-              const finalResponse = currentResponse;
+              await addToHistory("assistant", currentResponseRef.current);
+              currentResponseRef.current = "";
               setCurrentResponse("");
-              await addToHistory("assistant", finalResponse);
             }
           }
         };

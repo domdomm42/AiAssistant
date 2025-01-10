@@ -30,6 +30,7 @@ const ChatBox = ({
     if (chatSocket?.readyState === WebSocket.OPEN) {
       // If there's a current response, save it first
       if (currentResponse) {
+        // console.log("currentResponse", currentResponse);
         await onAddHistory("assistant", currentResponse);
         setCurrentResponse(""); // Clear current response
       }

@@ -20,10 +20,16 @@ async def handle_chat_message(websocket, message_and_context):
                     current_sentence = ""
             except asyncio.CancelledError:
                 return
-
+            
         # Only send remaining speech if not cancelled
         if current_sentence.strip():
             await send_speech_chunks(current_sentence, websocket)
+
+        await websocket.send_json({
+            "type": "complete",
+            "status": "success"
+        })
+
 
     except asyncio.CancelledError:
         return
