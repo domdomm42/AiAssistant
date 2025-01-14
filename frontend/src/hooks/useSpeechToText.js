@@ -33,6 +33,13 @@ export function useSpeechToText(onTranscription) {
       if (!sttSocket || sttSocket.readyState !== WebSocket.OPEN) {
         return;
       }
+
+      if (voiceRecorder.current) {
+        voiceRecorder.current.resume();
+        setIsRecording(true);
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -42,7 +49,6 @@ export function useSpeechToText(onTranscription) {
         },
       });
 
-      // store the media recorder as a reference
       voiceRecorder.current = new MediaRecorder(stream, {
         mimeType: "audio/webm;codecs=opus",
         audioBitsPerSecond: 16000,
@@ -71,16 +77,9 @@ export function useSpeechToText(onTranscription) {
   const stopRecording = () => {
     if (voiceRecorder.current) {
       try {
-        // stop recording
-        voiceRecorder.current.stop();
-
-        // release microphone
-        const tracks = voiceRecorder.current.stream.getTracks();
-        tracks.forEach((track) => track.stop());
-
-        voiceRecorder.current = null;
+        voiceRecorder.current.pause();
       } catch (error) {
-        console.error("Error stopping recording:", error);
+        console.error("Error pausing recording:", error);
       }
       setIsRecording(false);
     }

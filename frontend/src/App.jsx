@@ -259,6 +259,7 @@ function App() {
               chatHistory={chatHistory}
               currentResponse={currentResponse}
               setCurrentResponse={setCurrentResponse}
+              currentResponseRef={currentResponseRef}
               audioQueue={audioQueue}
               setAudioQueue={setAudioQueue}
               onAddHistory={addToHistory}

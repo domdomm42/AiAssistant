@@ -7,6 +7,7 @@ const ChatBox = ({
   chatHistory,
   currentResponse,
   setCurrentResponse,
+  currentResponseRef,
   audioQueue,
   setAudioQueue,
   onAddHistory,
@@ -32,17 +33,10 @@ const ChatBox = ({
       if (currentResponse) {
         // console.log("currentResponse", currentResponse);
         await onAddHistory("assistant", currentResponse);
-        setCurrentResponse(""); // Clear current response
+        currentResponseRef.current = "";
+        setCurrentResponse("");
       }
 
-      // chatSocket.send(
-      //   JSON.stringify({
-      //     context: JSON.parse(sessionStorage.getItem("chatHistory") || "[]"),
-      //   })
-      // );
-      // setAudioQueue([]);
-
-      // Add user's new message and send it
       await onAddHistory("user", text);
       chatSocket.send(
         JSON.stringify({
