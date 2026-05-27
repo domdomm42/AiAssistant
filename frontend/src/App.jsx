@@ -38,72 +38,95 @@ function App() {
     sessionStorage.removeItem("chatHistory");
   }, []);
 
-  // Setup sockets and add text + audio message handlers
+  // Setup sockets with auto-reconnect (exponential backoff) so cold starts
+  // and idle disconnects recover without a page reload.
   useEffect(() => {
+    const backendUrl =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+    const wsUrl = backendUrl.replace(/^http/, "ws");
+
+    let unmounted = false;
     let wsChat = null;
     let wsSTT = null;
+    let chatAttempts = 0;
+    let sttAttempts = 0;
+    let chatTimer = null;
+    let sttTimer = null;
 
-    const connectWebSockets = () => {
-      try {
-        const backendUrl =
-          import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
-        const wsUrl = backendUrl.replace(/^http/, "ws");
+    const backoffDelay = (attempt) =>
+      Math.min(1000 * 2 ** attempt, 30000);
 
-        wsChat = new WebSocket(`${wsUrl}/ws/chat`);
-        wsSTT = new WebSocket(`${wsUrl}/ws/stt`);
+    const connectChat = () => {
+      if (unmounted) return;
+      wsChat = new WebSocket(`${wsUrl}/ws/chat`);
 
-        wsChat.onopen = () => {
-          console.log(
-            "Chat WebSocket Connected, readyState:",
-            wsChat.readyState
-          );
-          setChatSocket(wsChat);
-        };
+      wsChat.onopen = () => {
+        console.log("Chat WebSocket Connected");
+        chatAttempts = 0;
+        setChatSocket(wsChat);
+      };
 
-        wsSTT.onopen = () => {
-          console.log("STT WebSocket Connected, readyState:", wsSTT.readyState);
-          setSTTSocket(wsSTT);
-        };
+      wsChat.onerror = (error) => {
+        console.error("Chat WebSocket Error:", error);
+      };
 
-        wsSTT.onerror = (error) => {
-          console.error("STT WebSocket Error:", error);
-        };
+      wsChat.onclose = (event) => {
+        console.log("Chat WebSocket Closed", event.code, event.reason);
+        setChatSocket(null);
+        if (unmounted) return;
+        const delay = backoffDelay(chatAttempts++);
+        chatTimer = setTimeout(connectChat, delay);
+      };
 
-        wsSTT.onclose = (event) => {
-          console.log("STT WebSocket Closed", event.code, event.reason);
-          setSTTSocket(null);
-        };
-
-        // Add message handlers
-        wsChat.onmessage = async (event) => {
-          const response = JSON.parse(event.data);
-          if (response.status === "success") {
-            if (response.type === "chunk") {
-              currentResponseRef.current += response.text;
-              setCurrentResponse(currentResponseRef.current);
-            } else if (response.type === "audio") {
-              setAudioQueue((prev) => [...prev, response.audio]);
-            } else if (response.type === "complete") {
-              await addToHistory("assistant", currentResponseRef.current);
-              currentResponseRef.current = "";
-              setCurrentResponse("");
-            }
+      wsChat.onmessage = async (event) => {
+        const response = JSON.parse(event.data);
+        if (response.status === "success") {
+          if (response.type === "chunk") {
+            currentResponseRef.current += response.text;
+            setCurrentResponse(currentResponseRef.current);
+          } else if (response.type === "audio") {
+            setAudioQueue((prev) => [...prev, response.audio]);
+          } else if (response.type === "complete") {
+            await addToHistory("assistant", currentResponseRef.current);
+            currentResponseRef.current = "";
+            setCurrentResponse("");
           }
-        };
-      } catch (error) {
-        console.error("WebSocket connection error:", error);
-      }
+        }
+      };
     };
 
-    connectWebSockets();
+    const connectSTT = () => {
+      if (unmounted) return;
+      wsSTT = new WebSocket(`${wsUrl}/ws/stt`);
+
+      wsSTT.onopen = () => {
+        console.log("STT WebSocket Connected");
+        sttAttempts = 0;
+        setSTTSocket(wsSTT);
+      };
+
+      wsSTT.onerror = (error) => {
+        console.error("STT WebSocket Error:", error);
+      };
+
+      wsSTT.onclose = (event) => {
+        console.log("STT WebSocket Closed", event.code, event.reason);
+        setSTTSocket(null);
+        if (unmounted) return;
+        const delay = backoffDelay(sttAttempts++);
+        sttTimer = setTimeout(connectSTT, delay);
+      };
+    };
+
+    connectChat();
+    connectSTT();
 
     return () => {
-      if (wsChat && wsChat.readyState === WebSocket.OPEN) {
-        wsChat.close();
-      }
-      if (wsSTT && wsSTT.readyState === WebSocket.OPEN) {
-        wsSTT.close();
-      }
+      unmounted = true;
+      if (chatTimer) clearTimeout(chatTimer);
+      if (sttTimer) clearTimeout(sttTimer);
+      if (wsChat && wsChat.readyState === WebSocket.OPEN) wsChat.close();
+      if (wsSTT && wsSTT.readyState === WebSocket.OPEN) wsSTT.close();
     };
   }, []);
 

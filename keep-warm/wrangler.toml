@@ -1,0 +1,9 @@
+name = "ai-assistant-keepwarm"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["*/10 * * * *"]
+
+[vars]
+TARGET_URL = "https://aiassistant-478u.onrender.com"

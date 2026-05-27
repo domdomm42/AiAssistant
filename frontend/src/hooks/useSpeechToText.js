@@ -5,6 +5,7 @@ import { useSocket } from "../context/SocketContext";
 export function useSpeechToText(onTranscription) {
   const [isRecording, setIsRecording] = useState(false);
   const { sttSocket } = useSocket();
+  const isReady = sttSocket?.readyState === WebSocket.OPEN;
 
   const voiceRecorder = useRef(null);
 
@@ -85,5 +86,5 @@ export function useSpeechToText(onTranscription) {
     }
   };
 
-  return { isRecording, startRecording, stopRecording };
+  return { isRecording, startRecording, stopRecording, isReady };
 }
